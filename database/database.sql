@@ -1,0 +1,38 @@
+-- USERS
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT DEFAULT 'USER',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- FAVORITES
+CREATE TABLE favorites (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  series_id TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, series_id)
+);
+
+-- RATINGS
+CREATE TABLE ratings (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  series_id TEXT NOT NULL,
+  rating INT CHECK (rating BETWEEN 1 AND 5),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, series_id)
+);
+
+-- INTERACTIONS (NEO4J)
+CREATE TABLE interactions (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  series_id TEXT NOT NULL,
+  action TEXT CHECK (
+    action IN ('VIEW', 'DETAIL', 'SEARCH', 'FAVORITE', 'RATE')
+  ),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
