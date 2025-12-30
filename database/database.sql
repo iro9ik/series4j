@@ -1,3 +1,10 @@
+-- TEMPORARY AUTH MOCK DATABASE
+-- Used only for authentication testing during frontend development
+-- Final database will be Neo4j (graph-based) using Cypher queries
+-- This SQL file will be removed in the final version
+
+
+
 -- USERS
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
