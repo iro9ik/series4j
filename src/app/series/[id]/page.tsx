@@ -1,4 +1,5 @@
 import { getSeriesDetails } from "@/lib/tmdb";
+import SeriesActions from "@/components/series/SeriesActions";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -36,7 +37,9 @@ export default async function SeriesDetails({ params }: Props) {
             className="w-[300px] rounded-xl shadow-2xl"
           />
         )}
-
+        <div className="flex gap-4">
+        <SeriesActions seriesId={String(series.id)} />
+        </div>
         {/* INFO */}
         <div className="flex-1">
           <h1 className="text-4xl font-bold mb-2">{series.name}</h1>
