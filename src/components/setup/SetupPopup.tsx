@@ -23,17 +23,33 @@ export default function SetupPopup() {
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
-      prev.includes(genre)
-        ? prev.filter((g) => g !== genre)
-        : [...prev, genre]
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     );
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (step === 3) {
-      setCompleted(true);
-      localStorage.setItem("setupDone", "true");
-      localStorage.setItem("genres", JSON.stringify(selectedGenres));
+      // Save to server if authenticated
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          await fetch("/api/user/genres", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ genres: selectedGenres }),
+          });
+        }
+        // local fallback so popup won't show again immediately
+        localStorage.setItem("setupDone", "true");
+        localStorage.setItem("genres", JSON.stringify(selectedGenres));
+        setCompleted(true);
+      } catch (err) {
+        console.error("Error saving genres:", err);
+        alert("Could not save preferences. Please try again.");
+      }
     } else {
       setStep(step + 1);
     }

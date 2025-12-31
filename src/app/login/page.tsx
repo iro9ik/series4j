@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ username: "", password: "" });
+  const router = useRouter();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -15,9 +17,20 @@ export default function LoginPage() {
     });
     const data = await res.json();
     if (res.ok) {
+      const username = data?.user?.username ?? "";
       localStorage.setItem("token", data.token);
-      localStorage.setItem("username", data.username);
-      window.location.href = "/";
+      localStorage.setItem("username", username);
+
+      // If server indicates the user doesn't have genres -> show setup after login
+      if (data?.hasGenres === false) {
+        // flag to make SetupWrapper show the popup immediately
+        localStorage.setItem("showSetup", "true");
+      }
+
+      // notify other parts of the app about auth change (Navbar listens)
+      window.dispatchEvent(new Event("auth-change"));
+
+      router.push("/");
     } else {
       alert(data.error);
     }
@@ -32,15 +45,17 @@ export default function LoginPage() {
 
         <form onSubmit={submit} className="space-y-4">
           <input
-            placeholder="Email"
+            placeholder="Username"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
             className="w-full p-3 rounded-xl bg-black-800 border border-white/20 focus:border-yellow-400 outline-none transition"
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
           <input
             type="password"
             placeholder="Password"
-            className="w-full p-3 rounded-xl bg-black-800 border border-white/20 focus:border-yellow-400 outline-none transition"
+            value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className="w-full p-3 rounded-xl bg-black-800 border border-white/20 focus:border-yellow-400 outline-none transition"
           />
           <button className="w-full py-3 bg-yellow-400 text-black rounded-xl font-semibold hover:bg-yellow-300 transition">
             Login
