@@ -1,10 +1,13 @@
 import neo4j from "neo4j-driver";
 
-const driver = neo4j.driver(
-  process.env.NEO4J_URI!,
-  neo4j.auth.basic(process.env.NEO4J_USER!, process.env.NEO4J_PASSWORD!)
-);
+const uri = process.env.NEO4J_URI!;
+const user = process.env.NEO4J_USER!;
+const password = process.env.NEO4J_PASSWORD!;
+
+const driver = neo4j.driver(uri, neo4j.auth.basic(user, password), {
+  // tune TLS / connection settings if needed
+});
 
 export function getNeo4jSession() {
-  return driver.session();
+  return driver.session({ defaultAccessMode: neo4j.session.WRITE });
 }
