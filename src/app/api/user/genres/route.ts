@@ -3,20 +3,31 @@ import { NextResponse } from "next/server";
 import { getNeo4jSession } from "@/lib/neo4j";
 import jwt from "jsonwebtoken";
 
+function getTokenFromRequest(req: Request): string | null {
+  const authHeader = req.headers.get("authorization");
+  let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+  if (!token) {
+    const cookie = req.headers.get("cookie") || "";
+    for (const part of cookie.split(";")) {
+      const [k, v] = part.trim().split("=");
+      if (k === "token") token = decodeURIComponent(v || "");
+    }
+  }
+  return token;
+}
+
 export async function GET(req: Request) {
   try {
-    const authHeader = req.headers.get("authorization");
-let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
-if (!token) {
-  const cookie = req.headers.get("cookie") || "";
-  for (const part of cookie.split(";")) {
-    const [k, v] = part.trim().split("=");
-    if (k === "token") token = decodeURIComponent(v || "");
-  }
-}
-if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const token = getTokenFromRequest(req);
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const payload: any = jwt.verify(token, process.env.JWT_SECRET!);
+    let payload: any;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
+      console.error("Invalid token in GET /api/user/genres:", err);
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
 
     const session = getNeo4jSession();
     const result = await session.run(
@@ -37,11 +48,21 @@ if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
 export async function POST(req: Request) {
   try {
-    const token = req.headers.get("authorization")?.split(" ")[1];
+    const token = getTokenFromRequest(req);
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const payload: any = jwt.verify(token, process.env.JWT_SECRET!);
+    let payload: any;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET!);
+    } catch (err) {
+      console.error("Invalid token in POST /api/user/genres:", err);
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
     const { genres } = await req.json();
+    if (!Array.isArray(genres)) {
+      return NextResponse.json({ error: "Invalid genres payload" }, { status: 400 });
+    }
 
     const session = getNeo4jSession();
 

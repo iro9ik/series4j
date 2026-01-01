@@ -3,11 +3,26 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import jwt from "jsonwebtoken";
 
+function getTokenFromRequest(req: Request): string | null {
+  const auth = req.headers.get("authorization");
+  if (auth && auth.startsWith("Bearer ")) return auth.split(" ")[1];
+  const cookie = req.headers.get("cookie") || "";
+  for (const part of cookie.split(";")) {
+    const [k, v] = part.trim().split("=");
+    if (k === "token") return decodeURIComponent(v || "");
+  }
+  return null;
+}
+
 async function getUserIdFromToken(req: Request) {
-  const token = req.headers.get("authorization")?.split(" ")[1];
+  const token = getTokenFromRequest(req);
   if (!token) throw new Error("Unauthorized");
-  const payload: any = jwt.verify(token, process.env.JWT_SECRET!);
-  return payload.userId;
+  try {
+    const payload: any = jwt.verify(token, process.env.JWT_SECRET!);
+    return payload.userId;
+  } catch (err) {
+    throw new Error("Invalid token");
+  }
 }
 
 export async function GET(req: Request) {
@@ -37,6 +52,6 @@ export async function POST(req: Request) {
     }
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
   }
 }

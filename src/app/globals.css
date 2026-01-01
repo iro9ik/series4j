@@ -34,3 +34,50 @@ body {
 .scrollbar-hide {
   scrollbar-width: none;
 }
+
+/* hide main app when setup is open (SetupWrapper toggles .setup-open on <body>) */
+body.setup-open main {
+  display: none;
+}
+
+/* skeleton title style (if needed) */
+.skeleton-title {
+  height: 24px;
+  width: 220px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* Ensure cards match the popular size */
+.series-card-img {
+  width: 100%;
+  height: 330px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* hide main while setup open (already added earlier) */
+body.setup-open main {
+  display: none;
+}
+
+/* title skeleton styling */
+.skeleton-title {
+  height: 24px;
+  width: 220px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
