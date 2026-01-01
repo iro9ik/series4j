@@ -1,4 +1,3 @@
-// src/components/series/SeriesActions.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,16 +12,19 @@ export default function SeriesActions({ seriesId }: { seriesId: string }) {
   const [loadingList, setLoadingList] = useState(false);
 
   async function fetchStates() {
-    const token = localStorage.getItem("token");
-    if (!token) return;
     try {
-      const favRes = await fetch("/api/favorites", { headers: { Authorization: `Bearer ${token}` } });
-      if (favRes.ok) {
+      const favRes = await fetch("/api/favorites");
+      if (favRes.status === 401) {
+        setIsFavorite(false);
+      } else if (favRes.ok) {
         const arr = await favRes.json();
         setIsFavorite(arr.some((r: any) => String(r.series_id) === String(seriesId)));
       }
-      const listRes = await fetch("/api/mylist", { headers: { Authorization: `Bearer ${token}` } });
-      if (listRes.ok) {
+
+      const listRes = await fetch("/api/mylist");
+      if (listRes.status === 401) {
+        setIsInList(false);
+      } else if (listRes.ok) {
         const arr = await listRes.json();
         setIsInList(arr.some((r: any) => String(r.series_id) === String(seriesId)));
       }
@@ -36,11 +38,6 @@ export default function SeriesActions({ seriesId }: { seriesId: string }) {
   }, [seriesId]);
 
   async function toggleFavorite() {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Please log in to add favorites.");
-      return;
-    }
     const prev = isFavorite;
     setIsFavorite(!prev); // optimistic UI
     setLoadingFav(true);
@@ -48,9 +45,16 @@ export default function SeriesActions({ seriesId }: { seriesId: string }) {
     try {
       const res = await fetch("/api/favorites", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ series_id: seriesId }),
       });
+
+      if (res.status === 401) {
+        alert("Please log in to add favorites.");
+        setIsFavorite(prev);
+        return;
+      }
+
       const data = await res.json();
       if (res.ok) {
         setIsFavorite(Boolean(data.favorite));
@@ -70,11 +74,6 @@ export default function SeriesActions({ seriesId }: { seriesId: string }) {
   }
 
   async function toggleList() {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Please log in to add to your list.");
-      return;
-    }
     const prev = isInList;
     setIsInList(!prev);
     setLoadingList(true);
@@ -82,12 +81,19 @@ export default function SeriesActions({ seriesId }: { seriesId: string }) {
     try {
       const res = await fetch("/api/mylist", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ series_id: seriesId }),
       });
+
+      if (res.status === 401) {
+        alert("Please log in to add to your list.");
+        setIsInList(prev);
+        return;
+      }
+
       const data = await res.json();
       if (res.ok) {
-        setIsInList(Boolean(data.inList ?? data.mylist));
+        setIsInList(Boolean(data.inList));
       } else {
         console.error("mylist toggle failed:", data);
         setIsInList(prev);
