@@ -17,63 +17,63 @@ export default function SeriesCarousel({ series }: { series: CarouselItem[] }) {
 
   function scroll(dir: "left" | "right") {
     if (!ref.current) return;
-    // scroll amount tuned to card width + gap
     ref.current.scrollBy({
-      left: dir === "left" ? -760 : 760,
+      left: dir === "left" ? -600 : 600,
       behavior: "smooth",
     });
   }
 
   return (
     <div className="relative">
-      {/* left */}
+      {/* LEFT ARROW */}
       <button
         onClick={() => scroll("left")}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-20
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10
                    bg-black/60 hover:bg-black/80
                    w-14 h-14 rounded-full flex items-center justify-center"
         aria-label="Scroll left"
       >
-        <ChevronLeft className="w-8 h-8 text-white" />
+        <ChevronLeft className="w-9 h-9 text-white" />
       </button>
 
+      {/* LIST */}
       <div
         ref={ref}
-        className="flex gap-6 overflow-x-auto scrollbar-hide px-16 py-4 scroll-smooth snap-x snap-mandatory"
+        className="flex gap-6 overflow-x-auto scrollbar-hide
+                   px-16 pt-6 pb-4 scroll-smooth"
       >
         {series.map((s) => {
           const sid = s.id ?? s.tmdbId;
           const href = `/series/${sid}`;
-          const img = s.poster_path ? `https://image.tmdb.org/t/p/w500${s.poster_path}` : null;
-
+          const img = s.poster_path ? `https://image.tmdb.org/t/p/w300${s.poster_path}` : null;
           return (
             <Link
               key={String(sid ?? s.name ?? Math.random())}
               href={href}
-              className="min-w-[220px] w-[220px] flex-shrink-0 snap-start transition-transform duration-300 hover:scale-105"
+              className="min-w-[180px] transition-transform duration-300 hover:scale-110"
             >
-              <div className="rounded-lg overflow-hidden">
-                {img ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={img} alt={s.name} className="w-full h-[330px] object-cover rounded-lg shadow-lg" />
-                ) : (
-                  <div className="w-full h-[330px] bg-white/6 rounded-lg flex items-center justify-center text-white/60">No image</div>
-                )}
-              </div>
+              {img ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img} alt={s.name} className="rounded-lg" />
+              ) : (
+                <div className="w-[180px] h-[270px] bg-white/6 rounded-lg flex items-center justify-center text-white/60">
+                  No image
+                </div>
+              )}
             </Link>
           );
         })}
       </div>
 
-      {/* right */}
+      {/* RIGHT ARROW */}
       <button
         onClick={() => scroll("right")}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-20
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10
                    bg-black/60 hover:bg-black/80
                    w-14 h-14 rounded-full flex items-center justify-center"
         aria-label="Scroll right"
       >
-        <ChevronRight className="w-8 h-8 text-white" />
+        <ChevronRight className="w-9 h-9 text-white" />
       </button>
     </div>
   );
