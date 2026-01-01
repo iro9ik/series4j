@@ -5,8 +5,16 @@ import jwt from "jsonwebtoken";
 
 export async function GET(req: Request) {
   try {
-    const token = req.headers.get("authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authHeader = req.headers.get("authorization");
+let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+if (!token) {
+  const cookie = req.headers.get("cookie") || "";
+  for (const part of cookie.split(";")) {
+    const [k, v] = part.trim().split("=");
+    if (k === "token") token = decodeURIComponent(v || "");
+  }
+}
+if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const payload: any = jwt.verify(token, process.env.JWT_SECRET!);
 

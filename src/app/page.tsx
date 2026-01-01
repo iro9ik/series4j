@@ -1,6 +1,7 @@
 import { getPopularSeries } from "@/lib/tmdb";
 import SeriesCarousel from "@/components/series/SeriesCarousel";
 import SetupWrapper from "@/components/setup/SetupWrapper";
+import Recommendations from "@/components/home/Recommendations";
 
 export default async function Home() {
   const series = await getPopularSeries();
@@ -15,6 +16,12 @@ export default async function Home() {
         <h1 className="text-3xl font-bold mb-4">Popular TV Series</h1>
         <SeriesCarousel series={series} />
       </section>
+      <>
+      {/* ... your hero/other sections */}
+      <Recommendations />
+      {/* ... rest of page */}
+    </>
     </main>
   );
+  
 }

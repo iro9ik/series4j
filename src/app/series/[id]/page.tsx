@@ -1,4 +1,5 @@
 import { getSeriesDetails } from "@/lib/tmdb";
+import { getNeo4jSession } from "@/lib/neo4j";
 import SeriesActions from "@/components/series/SeriesActions";
 
 type Props = {
@@ -8,7 +9,27 @@ type Props = {
 export default async function SeriesDetails({ params }: Props) {
   const { id } = await params;
   const series = await getSeriesDetails(id);
-
+  const tmdb = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.TMDB_API_KEY}`).then(r => r.json());
+  // tmdb.genres is an array like [{ id: 18, name: "Drama" }, ...]
+  const genreNames = (tmdb.genres || []).map((g: any) => g.name);
+  const session = getNeo4jSession();
+  await session.run(
+  `MERGE (s:Series {tmdbId: $tmdbId})
+   SET s.name = $name, s.poster_path = $poster_path, s.first_air_date = $first_air_date, s.overview = $overview
+   WITH s
+   UNWIND $genres AS genreName
+     MERGE (g:Genre {name: genreName})
+     MERGE (s)-[:HAS_GENRE]->(g)`,
+  {
+    tmdbId: String(tmdb.id),
+    name: tmdb.name,
+    poster_path: tmdb.poster_path,
+    first_air_date: tmdb.first_air_date,
+    overview: tmdb.overview,
+    genres: genreNames,
+  }
+);
+await session.close();
   if (!series) {
     return <div className="p-6">Series not found</div>;
   }
