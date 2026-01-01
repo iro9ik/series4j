@@ -25,32 +25,44 @@ export default function Navbar() {
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
   const desktopSearchContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // central auth refresh
-  function refreshAuthFromStorage() {
-    const token = localStorage.getItem("token");
-    const name = localStorage.getItem("username");
-    setIsLoggedIn(Boolean(token));
-    setUsername(name ?? null);
+  // load logged-in user from server (uses cookie token)
+  async function loadMe() {
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      if (!res.ok) {
+        setIsLoggedIn(false);
+        setUsername(null);
+        return;
+      }
+      const user = await res.json();
+      setIsLoggedIn(true);
+      setUsername(user.username ?? null);
+    } catch (err) {
+      console.error("Failed to load /api/auth/me", err);
+      setIsLoggedIn(false);
+      setUsername(null);
+    }
   }
 
-  // Run on mount: initialize auth
+  // Run on mount: initialize auth, and listen for auth-change
   useEffect(() => {
-    refreshAuthFromStorage();
+    loadMe();
 
     function onAuthChange() {
-      refreshAuthFromStorage();
+      loadMe();
     }
 
     window.addEventListener("auth-change", onAuthChange);
-
     return () => {
       window.removeEventListener("auth-change", onAuthChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Also refresh on pathname changes (client nav)
   useEffect(() => {
-    refreshAuthFromStorage();
+    loadMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // focus desktop input when opened
@@ -92,13 +104,18 @@ export default function Navbar() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    // notify other components
-    window.dispatchEvent(new Event("auth-change"));
-    // go to home
-    window.location.href = "/";
+  async function logout() {
+    try {
+      // call server to clear httpOnly cookie
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      // notify other components to refresh auth
+      window.dispatchEvent(new Event("auth-change"));
+      // go to home
+      router.push("/");
+    }
   }
 
   function handleDesktopIconClick() {
