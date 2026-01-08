@@ -23,6 +23,7 @@ export default function Navbar() {
   const desktopInputRef = useRef<HTMLInputElement | null>(null);
   const mobileInputRef = useRef<HTMLInputElement | null>(null);
   const desktopSearchContainerRef = useRef<HTMLDivElement | null>(null);
+  const profileContainerRef = useRef<HTMLDivElement | null>(null);
 
   async function loadMe() {
     try {
@@ -50,7 +51,6 @@ export default function Navbar() {
     function onAuthChange() { loadMe(); }
     window.addEventListener("auth-change", onAuthChange);
     return () => window.removeEventListener("auth-change", onAuthChange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { loadMe(); }, [pathname]);
@@ -58,11 +58,20 @@ export default function Navbar() {
   useEffect(() => { if (desktopSearchOpen && desktopInputRef.current) desktopInputRef.current.focus(); }, [desktopSearchOpen]);
   useEffect(() => { if (mobileSearchOpen && mobileInputRef.current) mobileInputRef.current.focus(); }, [mobileSearchOpen]);
 
+  // Click outside to close search and profile menu
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (!desktopSearchContainerRef.current) return;
-      if (!(e.target instanceof Node)) return;
-      if (!desktopSearchContainerRef.current.contains(e.target)) setDesktopSearchOpen(false);
+      const target = e.target as Node;
+
+      // Close desktop search
+      if (desktopSearchContainerRef.current && !desktopSearchContainerRef.current.contains(target)) {
+        setDesktopSearchOpen(false);
+      }
+
+      // Close profile menu
+      if (profileContainerRef.current && !profileContainerRef.current.contains(target)) {
+        setProfileOpen(false);
+      }
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -73,6 +82,7 @@ export default function Navbar() {
       if (e.key === "Escape") {
         setDesktopSearchOpen(false);
         setMobileSearchOpen(false);
+        setProfileOpen(false);
       }
     }
     document.addEventListener("keydown", onKey);
@@ -100,71 +110,92 @@ export default function Navbar() {
     setMobileSearchOpen(false); setDesktopSearchOpen(false);
   }
 
-  return (
-    <header className="sticky top-0 z-50 bg-black/80 backdrop-blur border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold text-yellow-400">Series4J</Link>
+  const initials = username ? username.slice(0, 2).toUpperCase() : "?";
 
-        <nav className="hidden md:flex gap-10 text-sm uppercase tracking-wide">
+  return (
+    <header className="sticky top-0 z-50 bg-black/90 backdrop-blur border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center">
+        {/* Logo - Left */}
+        <Link href="/" className="text-2xl font-bold text-yellow-400 mr-auto">Series4J</Link>
+
+        {/* Nav Links - Center */}
+        <nav className="hidden md:flex gap-8 text-sm uppercase tracking-wide absolute left-1/2 -translate-x-1/2">
           <Link href="/" className="hover:text-yellow-400 transition">Accueil</Link>
           <Link href="/series" className="hover:text-yellow-400 transition">Series</Link>
-          {isLoggedIn && <Link href="/mylist" className="hover:text-yellow-400 transition">Library</Link>}
+          {isLoggedIn && <Link href="/library" className="hover:text-yellow-400 transition">Library</Link>}
         </nav>
 
-        <div className="relative flex items-center gap-4">
+        {/* Right side - Search + Auth */}
+        <div className="flex items-center gap-3 ml-auto">
           {/* Desktop search */}
-          <div ref={desktopSearchContainerRef} className="hidden md:flex items-center gap-2">
+          <div ref={desktopSearchContainerRef} className="hidden md:flex items-center">
             <form onSubmit={handleDesktopSubmit} className="flex items-center">
-              <div className={`flex items-center transition-all duration-300 ease-out overflow-hidden ${desktopSearchOpen ? "w-64 opacity-100" : "w-0 opacity-0 pointer-events-none"}`}>
-                <input ref={desktopInputRef} type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-gradient-to-b from-white/6 to-white/3 border border-white/10 text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-shadow" />
+              <div className={`flex items-center transition-all duration-300 ease-out overflow-hidden ${desktopSearchOpen ? "w-64 opacity-100 mr-2" : "w-0 opacity-0"}`}>
+                <input
+                  ref={desktopInputRef}
+                  type="text"
+                  placeholder="Search series..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg bg-black border-2 border-yellow-400 text-sm text-white placeholder-white/50 focus:outline-none"
+                />
               </div>
-              <button type="button" onClick={handleDesktopIconClick} aria-label={desktopSearchOpen ? "Close search" : "Open search"} className="ml-2 w-10 h-10 rounded-md bg-yellow-400 text-black flex items-center justify-center hover:bg-yellow-300 transition">
+              <button type="button" onClick={handleDesktopIconClick} aria-label={desktopSearchOpen ? "Close search" : "Open search"} className="w-10 h-10 rounded-lg bg-yellow-400 text-black flex items-center justify-center hover:bg-yellow-300 transition">
                 {desktopSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
               </button>
             </form>
           </div>
 
-          {/* mobile search */}
+          {/* Mobile search */}
           <div className="md:hidden">
-            <button onClick={handleMobileIconClick} aria-label="Open search" className="w-10 h-10 rounded-md bg-yellow-400 text-black flex items-center justify-center hover:bg-yellow-300 transition">
+            <button onClick={handleMobileIconClick} aria-label="Open search" className="w-10 h-10 rounded-lg bg-yellow-400 text-black flex items-center justify-center hover:bg-yellow-300 transition">
               <Search className="w-4 h-4" />
             </button>
             {mobileSearchOpen && (
-              <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6">
+              <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6">
                 <div className="w-full max-w-md">
                   <form onSubmit={handleMobileSubmit} className="flex items-center gap-2">
                     <input ref={mobileInputRef} type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                      className="flex-1 px-4 py-3 rounded-md bg-white/5 border border-white/10 text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-shadow" />
-                    <button type="submit" className="w-12 h-12 rounded-md bg-yellow-400 text-black flex items-center justify-center hover:bg-yellow-300 transition" aria-label="Submit search"><Search className="w-5 h-5" /></button>
-                    <button type="button" onClick={() => setMobileSearchOpen(false)} className="ml-2 w-12 h-12 rounded-md bg-white/5 text-white flex items-center justify-center hover:bg-white/10 transition"><X className="w-5 h-5" /></button>
+                      className="flex-1 px-4 py-3 rounded-lg bg-black border-2 border-yellow-400 text-white placeholder-white/50 focus:outline-none" />
+                    <button type="submit" className="w-12 h-12 rounded-lg bg-yellow-400 text-black flex items-center justify-center hover:bg-yellow-300 transition" aria-label="Submit search"><Search className="w-5 h-5" /></button>
+                    <button type="button" onClick={() => setMobileSearchOpen(false)} className="w-12 h-12 rounded-lg bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"><X className="w-5 h-5" /></button>
                   </form>
                 </div>
               </div>
             )}
           </div>
 
-          {/* auth / profile */}
+          {/* Auth / Profile */}
           {!authResolved ? (
-            // placeholder avoids flash; keeps space similar
-            <div className="w-[220px] h-10" />
+            <div className="w-20 h-9" />
           ) : !isLoggedIn ? (
             <>
-              <Link href="/login" className="px-5 py-2 rounded-lg border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition font-semibold">Login</Link>
-              <Link href="/register" className="px-5 py-2 rounded-lg bg-yellow-400 text-black hover:bg-yellow-300 transition font-semibold">Sign Up</Link>
+              <Link href="/login" className="px-4 py-2 rounded-lg border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition text-sm font-medium">Login</Link>
+              <Link href="/register" className="px-4 py-2 rounded-lg bg-yellow-400 text-black hover:bg-yellow-300 transition text-sm font-medium">Sign Up</Link>
             </>
           ) : (
-            <>
-              <button onClick={() => setProfileOpen((p) => !p)} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User className="w-6 h-6" /></div>
-                <span className="text-sm text-white/80">{username ?? "Profile"}</span>
-              </button>
+            <div className="relative" ref={profileContainerRef}>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setProfileOpen((p) => !p)}
+                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-white/20 transition shadow-lg"
+                  aria-label="User profile"
+                >
+                  <User className="w-5 h-5 text-white" />
+                </button>
+
+                {/* Name on the right of the icon */}
+                <span className="hidden lg:block text-sm font-bold text-white/90 tracking-wide cursor-default">{username}</span>
+              </div>
+
               {profileOpen && (
-                <div className="absolute right-0 top-14 w-40 bg-black border border-white/10 rounded-lg shadow-lg overflow-hidden">
-                  <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 hover:bg-white/10 transition text-sm"><LogOut className="w-4 h-4" /> Logout</button>
+                <div className="absolute right-0 top-14 w-40 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1">
+                  <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-white/10 transition text-sm text-white/90">
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

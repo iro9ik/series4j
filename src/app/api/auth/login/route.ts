@@ -35,6 +35,8 @@ export async function POST(req: Request) {
     const isMatch = await bcrypt.compare(password, passwordHash);
     if (!isMatch) return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
 
+    // No Postgres sync needed - Neo4j Only
+
     if (!process.env.JWT_SECRET) {
       console.error("JWT_SECRET missing");
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
