@@ -6,68 +6,92 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ username: "", password: "" });
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      const username = data?.user?.username ?? "";
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("username", username);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const username = data?.user?.username ?? "";
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("username", username);
 
-      // If server indicates the user doesn't have genres -> show setup after login
-      if (data?.hasGenres === false) {
-        // flag to make SetupWrapper show the popup immediately
-        localStorage.setItem("showSetup", "true");
+        if (data?.hasGenres === false) {
+          localStorage.setItem("showSetup", "true");
+        }
+
+        window.dispatchEvent(new Event("auth-change"));
+        router.push("/");
+      } else {
+        alert(data.error);
       }
-
-      // notify other parts of the app about auth change (Navbar listens)
-      window.dispatchEvent(new Event("auth-change"));
-
-      router.push("/");
-    } else {
-      alert(data.error);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <div className="bg-black-900/90 p-10 rounded-2xl shadow-xl w-96 focus:border-yellow-400 outline-none transition">
-        <h1 className="text-3xl font-bold text-yellow-400 text-center mb-6">
-          Welcome Back
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-400/10 rounded-full blur-3xl" />
 
-        <form onSubmit={submit} className="space-y-4">
-          <input
-            placeholder="Username"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            className="w-full p-3 rounded-xl bg-black-800 border border-white/20 focus:border-yellow-400 outline-none transition"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full p-3 rounded-xl bg-black-800 border border-white/20 focus:border-yellow-400 outline-none transition"
-          />
-          <button className="w-full py-3 bg-yellow-400 text-black rounded-xl font-semibold hover:bg-yellow-300 transition">
-            Login
-          </button>
-        </form>
+      <div className="relative z-10 w-full max-w-md mx-4">
+        <div className="bg-black/80 backdrop-blur-xl border border-yellow-400/20 rounded-3xl p-8 shadow-2xl shadow-yellow-400/5">
+          <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+            Welcome Back
+          </h1>
+          <p className="text-white/50 text-center mb-8 text-sm">
+            Sign in to continue to Series4J
+          </p>
 
-        <p className="text-white/70 text-center mt-4">
-          Don't have an account?{" "}
-          <Link href="/register" className="text-yellow-400 hover:underline">
-            Sign Up
-          </Link>
-        </p>
+          <form onSubmit={submit} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-white/70 text-sm font-medium">Username</label>
+              <input
+                placeholder="Enter your username"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 outline-none transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-white/70 text-sm font-medium">Password</label>
+              <input
+                type="password"
+                placeholder="Enter your password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 outline-none transition-all"
+              />
+            </div>
+
+            <button
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black rounded-xl font-bold text-lg hover:from-yellow-300 hover:to-yellow-400 transition-all shadow-lg shadow-yellow-400/25 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading && <span className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />}
+              Sign In
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-white/10 text-center">
+            <p className="text-white/50 text-sm">
+              Don't have an account?{" "}
+              <Link href="/register" className="text-yellow-400 hover:text-yellow-300 font-semibold transition">
+                Create one
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

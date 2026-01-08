@@ -134,18 +134,25 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "DB connection error" }, { status: 500 });
     }
 
-    // Sequential queries
+    // Sequential queries with improved scoring logic
+    // Scoring: FAVORITED (10) > VIEWED (5) > Genre match (3) > Popularity fallback
+
+    // Query 1: Find series based on user's genres (they LIKED) that they haven't interacted with
+    // Plus boost from series properties like popularity
     const forYouCypher = `
       MATCH (u:User {id: $userId})-[:LIKES]->(g:Genre)<-[:HAS_GENRE]-(s:Series)
-      WHERE NOT (u)-[:LIKES_SERIES]->(s)
-      WITH s, count(DISTINCT g) AS score
-      RETURN s AS series, score
+      WHERE NOT (u)-[:LIKES_SERIES]->(s) AND NOT (u)-[:VIEWED]->(s)
+      WITH s, count(DISTINCT g) AS genreMatches
+      RETURN s AS series, 
+             genreMatches * 3 + COALESCE(s.popularity, 0) / 100 AS score
       ORDER BY score DESC, s.name ASC
-      LIMIT 12
+      LIMIT 20
     `;
 
+    // Query 2: Simplified collaborative filtering - find series that similar users have FAVORITED
+    // Similar users = users who share genres with current user
     const similarCypher = `
-      MATCH (u:User {id:$userId})-[:LIKES]->(g:Genre)<-[:LIKES]-(other:User)
+      MATCH (u:User {id: $userId})-[:LIKES]->(g:Genre)<-[:LIKES]-(other:User)
       WHERE other.id <> $userId
       WITH u, other, count(DISTINCT g) AS sharedGenres
       WHERE sharedGenres >= 1
@@ -154,13 +161,30 @@ export async function GET(req: Request) {
       WITH s, sum(sharedGenres) AS score
       RETURN s AS series, score
       ORDER BY score DESC, s.name ASC
-      LIMIT 12
+      LIMIT 20
+    `;
+
+
+    // Query 3: Get user's favorited series to exclude from recommendations
+    const userFavoritesCypher = `
+      MATCH (u:User {id: $userId})-[:LIKES_SERIES]->(s:Series)
+      RETURN s.tmdbId AS tmdbId
+    `;
+
+    // Query 4: Get user's viewed series for context
+    const userViewedCypher = `
+      MATCH (u:User {id: $userId})-[:VIEWED]->(s:Series)
+      RETURN s.tmdbId AS tmdbId, s.name AS name
+      ORDER BY s.name
+      LIMIT 50
     `;
 
     const genresQ = `MATCH (u:User {id:$userId})-[:LIKES]->(g:Genre) RETURN g.name AS name`;
 
     let forYouRes: any, similarRes: any, userGenresRes: any;
+
     try {
+
       forYouRes = await session.run(forYouCypher, { userId });
       console.info("recommendations: forYou count:", forYouRes?.records?.length ?? 0);
     } catch (qerr) {

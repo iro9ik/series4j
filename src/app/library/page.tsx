@@ -2,30 +2,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SeriesActions from "@/components/series/SeriesActions";
-
-function Card({ s }: { s: any }) {
-  return (
-    <div className="bg-white/5 rounded-lg shadow-md overflow-hidden">
-      <div className="relative h-56 bg-black/20">
-        {s.poster_path ? (
-          <img src={`https://image.tmdb.org/t/p/w500${s.poster_path}`} alt={s.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/60">No image</div>
-        )}
-      </div>
-      <div className="p-4 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-lg">{s.name}</h3>
-          <p className="text-sm text-white/70">{s.first_air_date}</p>
-        </div>
-        <SeriesActions seriesId={String(s.id)} />
-      </div>
-    </div>
-  );
-}
+import SeriesCard from "@/components/series/SeriesCard";
+import PosterSkeleton from "@/components/common/PosterSkeleton";
+import { useRouter } from "next/navigation";
 
 export default function LibraryPage() {
+  const router = useRouter();
   const [favorites, setFavorites] = useState<any[]>([]);
   const [mylist, setMylist] = useState<any[]>([]);
   const [tab, setTab] = useState<"favorites" | "mylist">("favorites");
@@ -35,37 +17,42 @@ export default function LibraryPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setFavorites([]);
-        setMylist([]);
+      try {
+        // Fetch IDs using cookie (credentials: include/same-origin)
+        const [favRes, listRes] = await Promise.all([
+          fetch("/api/favorites", { credentials: "same-origin" }),
+          fetch("/api/mylist", { credentials: "same-origin" }),
+        ]);
+
+        if (favRes.status === 401 || listRes.status === 401) {
+          // Redirect or show login prompt
+          return;
+        }
+
+        const favs = favRes.ok ? await favRes.json() : [];
+        const lists = listRes.ok ? await listRes.json() : [];
+
+        // unique IDs to fetch from TMDB
+        const allIds = new Set([...favs.map((f: any) => f.series_id), ...lists.map((l: any) => l.series_id)]);
+        const uniqueIds = Array.from(allIds).filter(Boolean);
+
+        const details = await Promise.all(
+          uniqueIds.map(async (id: any) => {
+            const r = await fetch(`/api/tmdb/series/${id}`);
+            return r.ok ? r.json() : null;
+          })
+        );
+
+        const detailMap = new Map<string, any>();
+        details.forEach((d) => { if (d) detailMap.set(String(d.id), d); });
+
+        setFavorites(favs.map((f: any) => detailMap.get(String(f.series_id))).filter(Boolean));
+        setMylist(lists.map((l: any) => detailMap.get(String(l.series_id))).filter(Boolean));
+      } catch (err) {
+        console.error("Library load error:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      // fetch IDs
-      const [favRes, listRes] = await Promise.all([
-        fetch("/api/favorites", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/mylist", { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      const favs = favRes.ok ? await favRes.json() : [];
-      const lists = listRes.ok ? await listRes.json() : [];
-
-      // fetch details via TMDB proxy
-      const ids = Array.from(new Set([...favs.map((f: any) => f.series_id), ...lists.map((l: any) => l.series_id)]));
-      const details = await Promise.all(
-        ids.map(async (id: string) => {
-          const r = await fetch(`/api/tmdb/series/${id}`);
-          return r.ok ? r.json() : null;
-        })
-      );
-
-      const detailMap = new Map<string, any>();
-      details.forEach((d) => { if (d) detailMap.set(String(d.id), d); });
-
-      setFavorites(favs.map((f: any) => detailMap.get(String(f.series_id)) || { id: f.series_id }));
-      setMylist(lists.map((l: any) => detailMap.get(String(l.series_id)) || { id: l.series_id }));
-      setLoading(false);
     }
 
     load();
@@ -79,41 +66,80 @@ export default function LibraryPage() {
     return arr;
   }
 
+  const activeList = tab === "favorites" ? favorites : mylist;
+  const sortedList = sortArray(activeList);
+
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Library</h1>
-        <div className="flex items-center gap-3">
-          <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="bg-black/60 border border-white/10 rounded-md px-3 py-2">
-            <option value="newest">Newest first</option>
-            <option value="title-asc">Title A → Z</option>
-            <option value="title-desc">Title Z → A</option>
+    <div className="min-h-screen pt-24 px-6 pb-12 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div>
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Your Library</h1>
+          <p className="text-white/60">Manage your favorites and watchlist.</p>
+        </div>
+
+        <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
+          {/* Tabs */}
+          <div className="flex bg-white/5 rounded-lg p-1 relative">
+            {/* Animated Background for Tab */}
+            <div
+              className={`absolute inset-y-1 bg-yellow-400 rounded-md shadow-lg transition-all duration-300 ease-out ${tab === "favorites" ? "left-1 w-[88px]" : "left-[96px] w-[80px]"}`}
+            ></div>
+
+            <button
+              onClick={() => setTab("favorites")}
+              className={`relative z-10 px-4 py-2 rounded-md text-sm font-bold transition-colors ${tab === "favorites" ? "text-black" : "text-white/70 hover:text-white"}`}
+            >
+              Favorites
+            </button>
+            <button
+              onClick={() => setTab("mylist")}
+              className={`relative z-10 px-4 py-2 rounded-md text-sm font-bold transition-colors ${tab === "mylist" ? "text-black" : "text-white/70 hover:text-white"}`}
+            >
+              My List
+            </button>
+          </div>
+
+          {/* Separator */}
+          <div className="w-px h-8 bg-white/10 mx-2"></div>
+
+          {/* Sort */}
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as any)}
+            className="bg-transparent text-sm font-medium text-white/80 focus:outline-none cursor-pointer hover:text-white"
+          >
+            <option value="newest" className="bg-black">Newest Added</option>
+            <option value="title-asc" className="bg-black">Title (A-Z)</option>
+            <option value="title-desc" className="bg-black">Title (Z-A)</option>
           </select>
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="flex gap-3">
-          <button onClick={() => setTab("favorites")} className={`px-4 py-2 rounded-md ${tab==="favorites" ? "bg-yellow-400 text-black" : "bg-white/10 text-white"}`}>Favorites</button>
-          <button onClick={() => setTab("mylist")} className={`px-4 py-2 rounded-md ${tab==="mylist" ? "bg-yellow-400 text-black" : "bg-white/10 text-white"}`}>My List</button>
-        </div>
-      </div>
-
       {loading ? (
-        <p>Loading…</p>
-      ) : tab === "favorites" ? (
-        sortArray(favorites).length === 0 ? <p>No favorites yet.</p> : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortArray(favorites).map((s: any) => <Card key={s.id} s={s} />)}
-          </div>
-        )
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+          {[...Array(14)].map((_, i) => <PosterSkeleton key={i} />)}
+        </div>
+      ) : sortedList.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-white/10 rounded-2xl bg-white/5 animate-fade-in">
+          <p className="text-2xl font-bold text-white mb-2">It's empty here.</p>
+          <p className="text-white/50 mb-6">Start adding series to your {tab === "favorites" ? "favorites" : "list"}!</p>
+          <a href="/series" className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full font-bold transition">Browse Series</a>
+        </div>
       ) : (
-        sortArray(mylist).length === 0 ? <p>No items in your list yet.</p> : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortArray(mylist).map((s: any) => <Card key={s.id} s={s} />)}
-          </div>
-        )
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {sortedList.map((s: any) => (
+            <SeriesCard
+              key={s.id}
+              id={s.id}
+              title={s.name}
+              poster={s.poster_path}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
+
+

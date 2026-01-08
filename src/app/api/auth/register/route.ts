@@ -37,6 +37,8 @@ export async function POST(req: Request) {
     );
     session.close();
 
+    // No Postgres sync needed - Neo4j Only
+
     if (!process.env.JWT_SECRET) {
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
     }

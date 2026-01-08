@@ -1,7 +1,7 @@
 // src/app/api/mylist/route.ts
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import jwt from "jsonwebtoken";
+import { getNeo4jSession } from "@/lib/neo4j";
 
 function getTokenFromRequest(req: Request): string | null {
   const auth = req.headers.get("authorization");
@@ -26,32 +26,72 @@ async function getUserIdFromToken(req: Request) {
 }
 
 export async function GET(req: Request) {
+  let session = null;
   try {
     const userId = await getUserIdFromToken(req);
-    const result = await db.query("SELECT series_id FROM mylist WHERE user_id = $1 ORDER BY created_at DESC", [userId]);
-    return NextResponse.json(result.rows);
+    session = getNeo4jSession();
+
+    // Return format must match what frontend expects: array of object with series_id
+    const result = await session.run(
+      `MATCH (u:User {id: $userId})-[:IN_WATCHLIST]->(s:Series) 
+       RETURN s.tmdbId AS series_id`,
+      { userId }
+    );
+
+    const rows = result.records.map(r => ({ series_id: r.get("series_id") }));
+    return NextResponse.json(rows);
   } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err.message }, { status: 401 });
+    console.error("mylist GET error:", err);
+    return NextResponse.json({ error: err?.message || "Unauthorized" }, { status: 401 });
+  } finally {
+    if (session) await session.close();
   }
 }
 
 export async function POST(req: Request) {
+  let session = null;
+  console.log("[API] mylist POST (Neo4j only)");
   try {
     const userId = await getUserIdFromToken(req);
-    const { series_id } = await req.json();
-    if (!series_id) return NextResponse.json({ error: "series_id is required" }, { status: 400 });
+    const payload = await req.json();
+    const series_id = payload?.series_id;
 
-    const exists = await db.query("SELECT id FROM mylist WHERE user_id=$1 AND series_id=$2", [userId, series_id]);
-    if (exists.rowCount != null && exists.rowCount > 0) {
-      await db.query("DELETE FROM mylist WHERE user_id=$1 AND series_id=$2", [userId, series_id]);
+    if (!series_id) {
+      return NextResponse.json({ error: "series_id is required" }, { status: 400 });
+    }
+
+    session = getNeo4jSession();
+
+    const check = await session.run(
+      `MATCH (u:User {id: $userId})-[r:IN_WATCHLIST]->(s:Series {tmdbId: $tmdbId}) RETURN r`,
+      { userId, tmdbId: String(series_id) }
+    );
+    const exists = check.records.length > 0;
+
+    if (exists) {
+      // Toggle OFF
+      await session.run(
+        `MATCH (u:User {id: $userId})-[r:IN_WATCHLIST]->(s:Series {tmdbId: $tmdbId}) DELETE r`,
+        { userId, tmdbId: String(series_id) }
+      );
+      console.log("[API] mylist: removed relationship");
       return NextResponse.json({ inList: false });
     } else {
-      await db.query("INSERT INTO mylist(user_id, series_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", [userId, series_id]);
+      // Toggle ON
+      await session.run(
+        `MERGE (u:User {id: $userId})
+             MERGE (s:Series {tmdbId: $tmdbId})
+             MERGE (u)-[:IN_WATCHLIST]->(s)`,
+        { userId, tmdbId: String(series_id) }
+      );
+      console.log("[API] mylist: added relationship");
       return NextResponse.json({ inList: true });
     }
+
   } catch (err: any) {
-    console.error(err);
+    console.error("mylist POST error:", err);
     return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
+  } finally {
+    if (session) await session.close();
   }
 }

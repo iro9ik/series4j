@@ -8,6 +8,7 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const genreName = url.searchParams.get("genreName") || "";
+    const page = url.searchParams.get("page") || "1";
 
     if (!process.env.TMDB_API_KEY) {
       console.error("TMDB_API_KEY missing");
@@ -16,14 +17,14 @@ export async function GET(req: Request) {
 
     // map genreName -> tmdb id (case-insensitive)
     const genres = await getTvGenres();
-    const match = genres.find((g:any) => (g.name || "").toLowerCase() === genreName.toLowerCase());
+    const match = genres.find((g: any) => (g.name || "").toLowerCase() === genreName.toLowerCase());
     if (!match) {
-      return NextResponse.json({ results: [] });
+      return NextResponse.json({ results: [], total_pages: 0 });
     }
 
     const genreId = match.id;
 
-    const res = await fetch(`${BASE_URL}/discover/tv?api_key=${process.env.TMDB_API_KEY}&with_genres=${genreId}&language=en-US&page=1`);
+    const res = await fetch(`${BASE_URL}/discover/tv?api_key=${process.env.TMDB_API_KEY}&with_genres=${genreId}&language=en-US&page=${page}`);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       console.error("TMDB discover error:", res.status, txt);
@@ -31,9 +32,15 @@ export async function GET(req: Request) {
     }
 
     const data = await res.json();
-    return NextResponse.json({ results: data.results || [] });
+    return NextResponse.json({
+      results: data.results || [],
+      total_pages: data.total_pages || 1,
+      total_results: data.total_results || 0,
+      page: data.page || 1
+    });
   } catch (err: any) {
     console.error("discover route error:", err && (err.stack || err.message || err));
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
