@@ -1,4 +1,3 @@
-// src/app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
 import { getNeo4jSession } from "@/lib/neo4j";
 import bcrypt from "bcrypt";
@@ -15,7 +14,6 @@ export async function POST(req: Request) {
     }
 
     const session = getNeo4jSession();
-    // Try by username first, then email
     const result = await session.run(
       `MATCH (u:User) WHERE u.username = $id OR u.email = $id RETURN u.id as id, u.username as username, u.password_hash as password_hash LIMIT 1`,
       { id: identifier }
@@ -34,7 +32,6 @@ export async function POST(req: Request) {
 
     const isMatch = await bcrypt.compare(password, passwordHash);
     if (!isMatch) return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
-
     if (!process.env.JWT_SECRET) {
       console.error("JWT_SECRET missing");
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
