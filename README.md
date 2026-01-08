@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StreamSeries
 
-## Getting Started
+A modern, full-stack series tracking and discovery platform built with **Next.js 15**, **Neo4j**, and **TailwindCSS**.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+*   **Graph-Powered Recommendations**: Personalized "For You" feeds and "Similar Tastes" using Neo4j graph algorithms.
+*   **Series Tracking**: Track what you've watched, add to specific lists (Favorites, Watchlist), and view your history.
+*   **Modern UI/UX**: sleek, dark-themed interface with glassmorphism, smooth animations (Framer Motion/Tailwind), and responsive design.
+*   **Authentication**: Secure JWT-based auth stored in HTTP-only cookies.
+*   **TMDB Integration**: Rich metadata, posters, and details from The Movie Database API.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+*   **Frontend**: Next.js 15 (App Router), React, TailwindCSS, Lucide Icons.
+*   **Backend**: Next.js API Routes (Serverless functions).
+*   **Database**: Neo4j (Graph Database) for users, interactions, and relationships.
+*   **External API**: TMDB (The Movie Database).
+*   **Auth**: JWT (JSON Web Tokens) + Bcrypt.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Installation
 
-## Learn More
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/iro9ik/series4j.git
+    cd series4j
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3.  **Environment Setup**:
+    Create a `.env` file in the root directory:
+    ```env
+    # Database (Neo4j Aura or Local)
+    NEO4J_URI=neo4j+s://your-db-instance.databases.neo4j.io
+    NEO4J_USER=neo4j
+    NEO4J_PASSWORD=your-password
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+    # Security
+    JWT_SECRET=your-super-secret-key-change-me
 
-## Deploy on Vercel
+    # APIs
+    TMDB_API_KEY=your-tmdb-api-key
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5.  Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## 🗄️ Database Schema (Neo4j)
+
+*   **Nodes**: `User`, `Series`, `Genre`
+*   **Relationships**:
+    *   `(:User)-[:LIKES]->(:Genre)`
+    *   `(:User)-[:LIKES_SERIES]->(:Series)` (Favorites)
+    *   `(:User)-[:ON_WATCHLIST]->(:Series)` (My List)
+    *   `(:User)-[:VIEWED {at: datetime()}]->(:Series)`
+    *   `(:Series)-[:HAS_GENRE]->(:Genre)`
+
+## 🤝 Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## 📝 License
+
+[MIT](https://choosealicense.com/licenses/mit/)
