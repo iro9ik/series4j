@@ -16,9 +16,9 @@ export async function POST(req: Request) {
     const session = getNeo4jSession();
     const result = await session.run(
       `MATCH (u:User) WHERE u.username = $id OR u.email = $id RETURN u.id as id, u.username as username, u.password_hash as password_hash LIMIT 1`,
-      { id: identifier }
+     { id: identifier }
     );
-
+!!
     session.close();
 
     if (!result.records || result.records.length === 0) {
